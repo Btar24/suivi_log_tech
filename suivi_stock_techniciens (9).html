@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Techniciens</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#f7f6f3;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+  --text:#1a1918;--muted:#6b6965;
+  --green-bg:#eaf3de;--green:#3b6d11;
+  --amber-bg:#faeeda;--amber:#854f0b;
+  --red-bg:#fcebeb;--red:#a32d2d;
+  --blue-bg:#e6f1fb;--blue:#185fa5;
+  --r:10px;--rsm:6px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#181715;--surface:#232220;--surface2:#2c2b28;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --text:#f0ede8;--muted:#9a9790;
+  --green-bg:#173404;--green:#c0dd97;
+  --amber-bg:#412402;--amber:#fac775;
+  --red-bg:#501313;--red:#f7c1c1;
+  --blue-bg:#042c53;--blue:#b5d4f4;
+}}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+#splash{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .3s;}
+#splash.hide{opacity:0;pointer-events:none;}
+#network-banner{display:none;position:fixed;top:0;left:0;right:0;background:var(--red-bg);color:var(--red);font-size:13px;text-align:center;padding:8px;z-index:998;border-bottom:0.5px solid var(--red);}
+#network-banner.show{display:block;}
+
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:1rem;}
+#login-screen.show{display:flex;}
+.login-box{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:2rem;width:100%;max-width:420px;}
+.login-box h1{font-size:18px;font-weight:500;margin-bottom:4px;}
+.lsub{font-size:13px;color:var(--muted);margin-bottom:1.5rem;}
+#tech-buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;}
+.tech-btn{padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-size:14px;cursor:pointer;text-align:left;font-family:inherit;transition:background .15s;}
+.tech-btn:hover{background:var(--surface2);}
+.btn-new-tech{width:100%;padding:10px 12px;border:0.5px dashed var(--border2);border-radius:var(--rsm);background:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:1rem;}
+.btn-new-tech:hover{background:var(--surface2);color:var(--text);}
+.divider{text-align:center;font-size:12px;color:var(--muted);margin:0 0 1rem;position:relative;}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:0.5px;background:var(--border);}
+.divider::before{left:0;}.divider::after{right:0;}
+.admin-row{display:flex;gap:8px;}
+.admin-row input{flex:1;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit;}
+.admin-row input:focus{outline:none;border-color:var(--muted);}
+.error-msg{font-size:12px;color:var(--red);margin-top:6px;display:none;}
+.error-msg.show{display:block;}
+
+#app{display:none;max-width:920px;margin:0 auto;padding:1rem;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:0.5px solid var(--border);}
+.topbar h2{font-size:17px;font-weight:500;}
+.tsub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.btn{padding:7px 14px;border-radius:var(--rsm);border:0.5px solid var(--border2);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:background .15s;}
+.btn:hover{background:var(--surface2);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text);}
+.btn-primary:hover:not(:disabled){opacity:.85;}
+.btn-sm{padding:4px 9px;font-size:12px;}
+.btn-danger{color:var(--red);border-color:transparent;background:none;}
+.btn-danger:hover{background:var(--red-bg);}
+.btn-edit{color:var(--blue);border-color:var(--blue-bg);background:var(--blue-bg);padding:6px 12px;font-size:13px;border-radius:var(--rsm);}
+.btn-edit:hover{opacity:.85;}
+
+/* QUICK ACTIONS */
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem;}
+.qa-btn{padding:1.1rem 1rem;border-radius:var(--r);border:none;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;transition:opacity .15s;display:flex;flex-direction:column;gap:4px;}
+.qa-btn:active{opacity:.8;transform:scale(.98);}
+.qa-btn .qa-sub{font-size:12px;font-weight:400;opacity:.75;}
+.qa-use{background:var(--red-bg);color:var(--red);}
+.qa-recv{background:var(--green-bg);color:var(--green);}
+
+/* ARTICLE SEARCH */
+.article-search-wrap{position:relative;margin-bottom:12px;}
+.article-search-wrap input{width:100%;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit;}
+.article-search-wrap input:focus{outline:none;border-color:var(--blue);}
+.article-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--rsm);z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);}
+.article-option{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:0.5px solid var(--border);}
+.article-option:last-child{border-bottom:none;}
+.article-option:hover,.article-option.active{background:var(--surface2);}
+.article-option mark{background:var(--amber-bg);color:var(--amber);border-radius:2px;padding:0 2px;}
+
+.tabs{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:0.5px solid var(--border);overflow-x:auto;}
+.tab{padding:8px 14px;font-size:14px;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500;}
+.section{display:none;}.section.active{display:block;}
+
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:0.5px solid var(--border);}
+.card-header span{font-size:14px;font-weight:500;}
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem;}
+.stat{background:var(--surface2);border-radius:var(--rsm);padding:.85rem 1rem;}
+.stat-label{font-size:11px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;}
+.stat-val{font-size:22px;font-weight:500;}
+
+/* MOBILE STOCK TABLE */
+.stock-list{display:flex;flex-direction:column;}
+.stock-item{display:flex;align-items:center;gap:10px;padding:12px 1.25rem;border-bottom:0.5px solid var(--border);}
+.stock-item:last-child{border-bottom:none;}
+.stock-item-label{flex:1;font-size:14px;line-height:1.3;}
+.stock-item-label .stock-code{font-size:11px;color:var(--muted);margin-top:2px;font-family:monospace;}
+.stock-item-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500;}
+.b-ok{background:var(--green-bg);color:var(--green);}
+.b-low{background:var(--amber-bg);color:var(--amber);}
+.b-gray{background:var(--surface2);color:var(--muted);}
+.mini{font-size:11px;padding:2px 7px;border-radius:99px;}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;}
+.tag-in{background:var(--green-bg);color:var(--green);}
+.tag-out{background:var(--red-bg);color:var(--red);}
+.tag-admin{background:var(--blue-bg);color:var(--blue);}
+
+.bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:50px;}
+.bar-fill{height:100%;border-radius:3px;}
+
+.tech-grid-ov{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:1rem;}
+.tech-ov{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;cursor:pointer;transition:border-color .15s;}
+.tech-ov:hover{border-color:var(--border2);}
+.tech-ov.sel{border:2px solid var(--blue);}
+.tech-ov-name{font-size:14px;font-weight:500;margin-bottom:6px;}
+.tech-ov-stats{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ARTICLE FILTER RESULT */
+.article-filter-result{margin-bottom:1rem;}
+.article-filter-result table{width:100%;border-collapse:collapse;font-size:13px;}
+.article-filter-result th{padding:8px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;border-bottom:0.5px solid var(--border);background:var(--surface2);}
+.article-filter-result td{padding:10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+.article-filter-result tr:last-child td{border-bottom:none;}
+
+.filter-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
+.filter-bar select{padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;flex:1;min-width:130px;}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 0;font-size:13px;color:var(--muted);}
+.pagination-btns{display:flex;gap:6px;}
+
+.hist-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border);}
+.hist-row:last-child{border-bottom:none;}
+.hdot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.hdot-in{background:#639922;}.hdot-out{background:#E24B4A;}
+.hcontent{flex:1;min-width:0;}
+.htitle{font-size:13px;font-weight:500;}
+.hmeta{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:0;}
+.modal{background:var(--surface);border-radius:var(--r) var(--r) 0 0;padding:1.5rem;width:100%;max-width:520px;border:0.5px solid var(--border);max-height:90vh;overflow-y:auto;}
+.modal-center{align-items:center;padding:1rem;}
+.modal-center .modal{border-radius:var(--r);max-width:400px;}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:1rem;}
+.modal p{font-size:14px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 1.25rem;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;font-weight:500;}
+.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=date],.fg input[type=password]{width:100%;padding:12px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-size:15px;font-family:inherit;}
+.fg select:focus,.fg input:focus{outline:none;border-color:var(--blue);}
+.ma{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
+.ma-center{justify-content:center;}
+
+/* BOTTOM ACTION BTN */
+.bottom-btn{width:100%;padding:16px;border-radius:var(--rsm);border:none;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px;}
+.bottom-btn-primary{background:var(--text);color:var(--bg);}
+.bottom-btn-primary:disabled{opacity:.5;}
+.bottom-btn-danger{background:var(--red);color:#fff;}
+
+.qty-stepper{display:flex;align-items:center;gap:0;border:0.5px solid var(--border2);border-radius:var(--rsm);overflow:hidden;}
+.qty-stepper button{padding:12px 18px;border:none;background:var(--surface2);color:var(--text);font-size:20px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.qty-stepper button:active{background:var(--border2);}
+.qty-stepper input{flex:1;border:none;text-align:center;font-size:18px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit;padding:12px 0;min-width:0;}
+.qty-stepper input:focus{outline:none;}
+
+/* TOAST - centré en bas */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:99px;font-size:14px;font-weight:500;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+.loader{text-align:center;padding:2rem;color:var(--muted);font-size:13px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--muted);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:2rem;color:var(--muted);font-size:13px;}
+.info-box{font-size:13px;color:var(--muted);padding:10px 12px;background:var(--surface2);border-radius:var(--rsm);margin-bottom:12px;}
+
+.exped-items{border:0.5px solid var(--border);border-radius:var(--rsm);overflow:hidden;margin-bottom:12px;}
+.exped-item-header{display:grid;grid-template-columns:3fr 1fr 32px;gap:8px;padding:7px 10px;background:var(--surface2);font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;}
+.exped-item-row{display:grid;grid-template-columns:3fr 1fr 32px;gap:8px;padding:7px 10px;border-top:0.5px solid var(--border);align-items:center;}
+.exped-item-row select,.exped-item-row input{padding:6px 8px;font-size:13px;border:0.5px solid var(--border2);border-radius:4px;background:var(--surface);color:var(--text);font-family:inherit;width:100%;}
+.btn-rm{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;}
+.btn-rm:hover{background:var(--red-bg);color:var(--red);}
+.btn-add-item{width:100%;padding:8px;border:0.5px dashed var(--border2);border-radius:var(--rsm);background:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:12px;}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{padding:8px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);background:var(--surface2);}
+.tbl td{padding:9px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--surface2);}
+
+.tech-list-manage{display:flex;flex-direction:column;gap:6px;}
+.tech-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--rsm);font-size:14px;}
+
+@media(max-width:480px){
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .tech-grid-ov{grid-template-columns:1fr;}
+  .quick-actions{grid-template-columns:1fr 1fr;}
+  #app{padding:.75rem;}
+}
+</style>
+</head>
+<body>
+
+<div id="network-banner">Connexion perdue — vérifie ton réseau</div>
+<div id="splash"><div style="text-align:center;"><div class="spinner"></div><div style="font-size:13px;color:var(--muted);">Chargement...</div></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Stock Techniciens</h1>
+    <div class="lsub">Identifie-toi pour accéder à ton stock</div>
+    <div id="tech-buttons"></div>
+    <button class="btn-new-tech" onclick="openNewTechModal()">+ Je suis nouveau</button>
+    <div class="divider">ou</div>
+    <div class="admin-row">
+      <input type="password" id="admin-pw" placeholder="Code administrateur" onkeydown="if(event.key==='Enter')loginAdmin()">
+      <button class="btn btn-primary" id="admin-btn" onclick="loginAdmin()">Admin</button>
+    </div>
+    <div class="error-msg" id="admin-error">Code incorrect</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <h2 id="greeting"></h2>
+      <div class="tsub" id="subgreeting"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="rt-dot" style="width:7px;height:7px;border-radius:50%;background:#639922;display:inline-block;"></span>
+      <button class="btn btn-sm" onclick="logout()">Changer</button>
+    </div>
+  </div>
+
+  <!-- VUE TECH -->
+  <div id="view-tech">
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Références</div><div class="stat-val" id="t-refs">—</div></div>
+      <div class="stat"><div class="stat-label">Total</div><div class="stat-val" id="t-total">—</div></div>
+      <div class="stat"><div class="stat-label">Stock bas</div><div class="stat-val" id="t-low">—</div></div>
+    </div>
+    <div class="quick-actions">
+      <button class="qa-btn qa-use" onclick="openMoveModal('use')">
+        <span style="font-size:24px;">−</span>
+        J'ai utilisé
+        <span class="qa-sub">Déduire du stock</span>
+      </button>
+      <button class="qa-btn qa-recv" onclick="openMoveModal('receive')">
+        <span style="font-size:24px;">+</span>
+        J'ai reçu
+        <span class="qa-sub">Ajouter au stock</span>
+      </button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="card-header"><span>Mon stock</span></div>
+      <div id="tech-stock-list"><div class="loader"><div class="spinner"></div>Chargement...</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;margin-bottom:1rem;">Historique récent</div>
+      <div id="tech-history"></div>
+      <div id="tech-hist-pagination"></div>
+    </div>
+  </div>
+
+  <!-- VUE ADMIN -->
+  <div id="view-admin" style="display:none;">
+    <div class="tabs">
+      <button class="tab active" onclick="aTab('overview')">Vue globale</button>
+      <button class="tab" onclick="aTab('expedition')">Expédition</button>
+      <button class="tab" onclick="aTab('quickadd')">Ajout rapide</button>
+      <button class="tab" onclick="aTab('history')">Historique</button>
+      <button class="tab" onclick="aTab('settings')">Techniciens</button>
+      <button class="tab" onclick="aTab('security')">Sécurité</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="admin-overview" class="section active">
+      <div class="filter-bar">
+        <select id="filter-article" onchange="onArticleFilterChange()">
+          <option value="">Tous les articles</option>
+        </select>
+      </div>
+      <!-- Vue normale : grille -->
+      <div id="overview-grid-view">
+        <div class="tech-grid-ov" id="admin-tech-grid"></div>
+        <div id="admin-tech-detail"></div>
+      </div>
+      <!-- Vue filtrée par article : tableau -->
+      <div id="overview-article-view" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="card-header"><span id="article-filter-title">Résultats</span></div>
+          <div class="article-filter-result">
+            <table>
+              <thead><tr><th>Technicien</th><th>Quantité</th><th>Statut</th></tr></thead>
+              <tbody id="article-filter-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPEDITION -->
+    <div id="admin-expedition" class="section">
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:1rem;">Nouvelle expédition</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="fg" style="margin:0;"><label>Technicien</label><select id="exp-tech"><option value="">Sélectionner...</option></select></div>
+          <div class="fg" style="margin:0;"><label>Date</label><input type="date" id="exp-date"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="fg" style="margin:0;"><label>Transporteur</label>
+            <select id="exp-carrier"><option value="">—</option><option>Chronopost</option><option>Colissimo</option><option>DHL</option><option>UPS</option><option>GLS</option><option>DPD</option></select>
+          </div>
+          <div class="fg" style="margin:0;"><label>N° de suivi</label><input type="text" id="exp-tracking" placeholder="Optionnel"></div>
+        </div>
+        <div class="exped-items">
+          <div class="exped-item-header"><span>Article</span><span>Qté</span><span></span></div>
+          <div id="exp-items-list"></div>
+        </div>
+        <button class="btn-add-item" onclick="addExpItem()">+ Ajouter un article</button>
+        <div class="fg"><label>Note</label><input type="text" id="exp-note" placeholder="Chantier, motif... (optionnel)"></div>
+        <div style="text-align:right;"><button class="btn btn-primary" id="btn-exp-save" onclick="saveExpedition()">Enregistrer l'expédition</button></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card-header"><span>Expéditions récentes</span></div>
+        <div id="exp-history"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- AJOUT RAPIDE -->
+    <div id="admin-quickadd" class="section">
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Ajout rapide de stock</div>
+        <div class="info-box">Pour ajouter quelques pièces à un technicien sans créer une expédition complète.</div>
+        <div class="fg"><label>Technicien</label><select id="qa-tech"><option value="">Sélectionner...</option></select></div>
+        <div class="fg">
+          <label>Article</label>
+          <div class="article-search-wrap">
+            <input type="text" id="qa-article-search" placeholder="Rechercher un article..." autocomplete="off" oninput="filterArticles('qa')" onfocus="showDropdown('qa')" onblur="setTimeout(()=>hideDropdown('qa'),200)">
+            <input type="hidden" id="qa-article-code">
+            <div class="article-dropdown" id="qa-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+        <div class="fg"><label>Quantité</label>
+          <div class="qty-stepper">
+            <button onclick="stepQty('qa-qty',-1)">−</button>
+            <input type="number" id="qa-qty" value="1" min="1">
+            <button onclick="stepQty('qa-qty',1)">+</button>
+          </div>
+        </div>
+        <div class="fg"><label>Note (optionnel)</label><input type="text" id="qa-note" placeholder="Motif, référence..."></div>
+        <div style="text-align:right;"><button class="btn btn-primary" id="btn-qa-save" onclick="saveQuickAdd()">Ajouter au stock</button></div>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div id="admin-history" class="section">
+      <div class="card">
+        <div class="filter-bar">
+          <select id="ah-tech" onchange="loadAdminHistory(1)"><option value="">Tous les techniciens</option></select>
+          <select id="ah-type" onchange="loadAdminHistory(1)">
+            <option value="">Tous types</option>
+            <option value="use">Utilisation</option>
+            <option value="receive">Réception</option>
+            <option value="admin_in">Expédition/Ajout</option>
+            <option value="correction">Correction</option>
+          </select>
+          <button class="btn btn-sm" onclick="exportExcel()">Exporter Excel</button>
+        </div>
+        <div id="admin-hist-list"><div class="loader"><div class="spinner"></div></div></div>
+        <div id="admin-hist-pagination"></div>
+      </div>
+    </div>
+
+    <!-- TECHNICIENS -->
+    <div id="admin-settings" class="section">
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:10px;">Gérer les techniciens</div>
+        <div class="info-box">Les techniciens ajoutés ici (ou via "Je suis nouveau") apparaissent sur l'écran de connexion.</div>
+        <div style="display:flex;gap:8px;margin-bottom:1rem;">
+          <input type="text" id="new-tech-name" placeholder="Prénom du technicien" style="flex:1;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--rsm);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;" onkeydown="if(event.key==='Enter')addTech(document.getElementById('new-tech-name').value)">
+          <button class="btn btn-primary" onclick="addTech(document.getElementById('new-tech-name').value)">Ajouter</button>
+        </div>
+        <div class="tech-list-manage" id="tech-manage-list"></div>
+      </div>
+    </div>
+
+    <!-- SÉCURITÉ -->
+    <div id="admin-security" class="section">
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:10px;">Changer le mot de passe admin</div>
+        <div class="info-box">Le mot de passe est stocké dans Supabase, jamais dans le fichier HTML.</div>
+        <div class="fg"><label>Mot de passe actuel</label><input type="password" id="pw-current" placeholder="Mot de passe actuel"></div>
+        <div class="fg"><label>Nouveau mot de passe</label><input type="password" id="pw-new" placeholder="6 caractères minimum"></div>
+        <div class="fg"><label>Confirmer</label><input type="password" id="pw-confirm" placeholder="Confirmer"></div>
+        <div class="error-msg" id="pw-error"></div>
+        <div style="text-align:right;margin-top:4px;"><button class="btn btn-primary" onclick="changePassword()">Mettre à jour</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOUVEAU TECH -->
+<div class="modal-bg modal-center" id="new-tech-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Ajouter mon prénom</h3>
+    <p>Entre ton prénom pour créer ton accès.</p>
+    <div class="fg"><label>Prénom</label><input type="text" id="nt-name" placeholder="Ex: Thomas" onkeydown="if(event.key==='Enter')registerNewTech()"></div>
+    <button class="bottom-btn bottom-btn-primary" id="btn-register" onclick="registerNewTech()">Créer mon accès</button>
+    <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="closeModal('new-tech-modal')" style="border:none;color:var(--muted);">Annuler</button></div>
+  </div>
+</div>
+
+<!-- MODAL MOUVEMENT TECH -->
+<div class="modal-bg" id="move-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="move-modal-title">J'ai utilisé du matériel</h3>
+    <div class="fg">
+      <label>Quel article ?</label>
+      <div class="article-search-wrap">
+        <input type="text" id="m-article-search" placeholder="Rechercher..." autocomplete="off" oninput="filterArticles('m')" onfocus="showDropdown('m')" onblur="setTimeout(()=>hideDropdown('m'),200)">
+        <input type="hidden" id="m-article-code">
+        <div class="article-dropdown" id="m-dropdown" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Combien ?</label>
+      <div class="qty-stepper">
+        <button onclick="stepQty('m-qty',-1)">−</button>
+        <input type="number" id="m-qty" value="1" min="1">
+        <button onclick="stepQty('m-qty',1)">+</button>
+      </div>
+    </div>
+    <div class="fg"><label>Note (optionnel)</label><input type="text" id="m-note" placeholder="Chantier, référence..."></div>
+    <button class="bottom-btn bottom-btn-primary" id="btn-save-move" onclick="saveMove()">Confirmer</button>
+    <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="closeModal('move-modal')" style="border:none;color:var(--muted);">Annuler</button></div>
+  </div>
+</div>
+
+<!-- MODAL CORRECTION -->
+<div class="modal-bg" id="edit-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Corriger la quantité</h3>
+    <div id="edit-info" class="info-box"></div>
+    <div class="fg"><label>Nouvelle quantité</label>
+      <div class="qty-stepper">
+        <button onclick="stepQty('es-qty',-1)">−</button>
+        <input type="number" id="es-qty" value="0" min="0">
+        <button onclick="stepQty('es-qty',1)">+</button>
+      </div>
+    </div>
+    <div class="fg"><label>Motif</label><input type="text" id="es-note" placeholder="Erreur de saisie, inventaire..."></div>
+    <button class="bottom-btn bottom-btn-primary" id="btn-save-correction" onclick="saveCorrection()">Corriger</button>
+    <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="closeModal('edit-modal')" style="border:none;color:var(--muted);">Annuler</button></div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal-bg modal-center" id="confirm-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Confirmer la suppression</h3>
+    <p id="confirm-text"></p>
+    <button class="bottom-btn bottom-btn-danger" onclick="doDelete()">Supprimer</button>
+    <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="closeModal('confirm-modal')" style="border:none;color:var(--muted);">Annuler</button></div>
+  </div>
+</div>
+
+<!-- MODAL SUPPRIMER TECH -->
+<div class="modal-bg modal-center" id="del-tech-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Supprimer le technicien</h3>
+    <p id="del-tech-text"></p>
+    <button class="bottom-btn bottom-btn-danger" onclick="doDeleteTech()">Supprimer</button>
+    <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="closeModal('del-tech-modal')" style="border:none;color:var(--muted);">Annuler</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://qlssxvsopgwygdscgrux.supabase.co';
+const SUPABASE_KEY='sb_publishable_ER0r74C5UIEyuojfUnNYsA_Jt8824FW';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const ARTICLES=[
+  {code:'1117-4P',label:'1117-4P'},
+  {code:'ANTENNE-COAXIALE',label:'Antenne coaxiale Huber Suhner'},
+  {code:'CISCO-1101-4P',label:'Cisco 1101-4P'},
+  {code:'CISCO-C1111-8P',label:'Cisco C1111 - 8P'},
+  {code:'EBDS-ADAPT-NF-SMAF',label:'Adaptateur N-femelle → SMA-femelle'},
+  {code:'EBDS-ADAPT-NF-SMAM',label:'Adaptateur N-femelle → SMA-mâle'},
+  {code:'EBDS-ADAPT-NM-NM',label:'Adaptateur N-mâle → N-mâle'},
+  {code:'EBDS-CBL240-100M',label:'Câble bobine type 240 – 100m'},
+  {code:'EBDS-CBL400-100M',label:'Câble bobine type 400 – 100m'},
+  {code:'EBDS-CON240-N-M',label:'Connecteur N-mâle crimp câble 240'},
+  {code:'EBDS-CON240-SMAM',label:'Connecteur SMA-mâle crimp câble 240'},
+  {code:'EBDS-CON400-N-F',label:'Connecteur N-femelle crimp câble 400'},
+  {code:'EBDS-CON400-N-M',label:'Connecteur N-mâle crimp câble 400'},
+  {code:'KEENETIC-SPEEDSTER',label:'Keenetic Speedster'},
+  {code:'RJ45-BLEU-GE1-1M',label:'RJ45 Bleu CAT6 GE1 – 1m'},
+  {code:'RJ45-BLUE-G1-1M',label:'RJ45 Bleu CAT6 G1 – 1m'},
+  {code:'RJ45-BLUE-G1-3M',label:'RJ45 Bleu CAT6 G1 – 3m'},
+  {code:'RJ45-BLUE-G2-1M',label:'RJ45 Bleu CAT6 G2 – 1m'},
+  {code:'RJ45-BLUE-G2-3M',label:'RJ45 Bleu CAT6 G2 – 3m'},
+  {code:'RJ45-GRIS-G0-3M',label:'RJ45 Gris CAT6 G0 – 3m'},
+  {code:'RJ45-GRIS-G1-3M',label:'RJ45 Gris CAT6 G1 – 3m'},
+  {code:'RJ45-JAUNE-GE0-1M',label:'RJ45 Jaune CAT6 GE0 – 1m'},
+];
+
+const PAGE_SIZE=20;
+let currentUser=null,isAdmin=false,moveType='use';
+let selectedAdminTech=null,realtimeSub=null,adminRealtimeSub=null;
+let pendingDeleteFn=null,pendingDeleteTechName=null,editCtx=null;
+let TECHS=[],ADMIN_PASSWORD=null;
+let techHistPage=1,adminHistPage=1;
+
+window.addEventListener('offline',()=>document.getElementById('network-banner').classList.add('show'));
+window.addEventListener('online',()=>document.getElementById('network-banner').classList.remove('show'));
+
+// ---- ARTICLE SEARCH ----
+let activeDropdown=null;
+
+function filterArticles(prefix){
+  const search=document.getElementById(prefix+'-article-search').value.toLowerCase();
+  const drop=document.getElementById(prefix+'-dropdown');
+  const filtered=ARTICLES.filter(a=>a.label.toLowerCase().includes(search)||a.code.toLowerCase().includes(search));
+  drop.style.display=filtered.length?'block':'none';
+  drop.innerHTML=filtered.map(a=>{
+    const hl=a.label.replace(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),'<mark>$1</mark>');
+    return `<div class="article-option" onmousedown="selectArticle('${prefix}','${a.code}','${a.label.replace(/'/g,"\\'")}')">
+      ${search?hl:a.label}<br><span style="font-size:11px;color:var(--muted);font-family:monospace;">${a.code}</span>
+    </div>`;
+  }).join('');
+}
+function showDropdown(prefix){
+  document.getElementById(prefix+'-article-search').value='';
+  filterArticles(prefix);
+  document.getElementById(prefix+'-dropdown').style.display='block';
+}
+function hideDropdown(prefix){
+  document.getElementById(prefix+'-dropdown').style.display='none';
+}
+function selectArticle(prefix,code,label){
+  document.getElementById(prefix+'-article-code').value=code;
+  document.getElementById(prefix+'-article-search').value=label;
+  document.getElementById(prefix+'-dropdown').style.display='none';
+}
+
+function stepQty(id,delta){
+  const input=document.getElementById(id);
+  const v=parseInt(input.value)||0;
+  input.value=Math.max(0,v+delta);
+}
+
+// ---- INIT ----
+async function init(){
+  try{
+    const [tr,cr]=await Promise.all([
+      sb.from('technicians').select('name').order('name'),
+      sb.from('config').select('value').eq('key','admin_password').single()
+    ]);
+    TECHS=(tr.data||[]).map(r=>r.name);
+    ADMIN_PASSWORD=cr.data?.value||null;
+  }catch(e){console.error(e);}
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(()=>document.getElementById('splash').style.display='none',300);
+  document.getElementById('login-screen').classList.add('show');
+  renderLoginButtons();
+}
+
+function renderLoginButtons(){
+  document.getElementById('tech-buttons').innerHTML=
+    TECHS.map(t=>`<button class="tech-btn" onclick="loginTech('${t}')">${t}</button>`).join('');
+}
+
+function openNewTechModal(){
+  document.getElementById('nt-name').value='';
+  document.getElementById('new-tech-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('nt-name').focus(),100);
+}
+async function registerNewTech(){
+  const name=document.getElementById('nt-name').value.trim();
+  if(!name||!/^[a-zA-ZÀ-ÿ\s\-]+$/.test(name)){toast('Prénom invalide');return;}
+  if(TECHS.includes(name)){closeModal('new-tech-modal');loginTech(name);return;}
+  const btn=document.getElementById('btn-register');
+  btn.disabled=true;
+  const {error}=await sb.from('technicians').insert({name});
+  btn.disabled=false;
+  if(error){toast('Erreur : '+error.message);return;}
+  TECHS.push(name);TECHS.sort();
+  closeModal('new-tech-modal');
+  renderLoginButtons();
+  loginTech(name);
+  toast(`Bienvenue ${name} !`);
+}
+
+function loginTech(n){currentUser=n;isAdmin=false;showApp();}
+async function loginAdmin(){
+  const pw=document.getElementById('admin-pw').value;
+  const btn=document.getElementById('admin-btn');
+  const err=document.getElementById('admin-error');
+  if(!ADMIN_PASSWORD){toast('Erreur config');return;}
+  btn.disabled=true;
+  await new Promise(r=>setTimeout(r,400));
+  btn.disabled=false;
+  if(pw===ADMIN_PASSWORD){
+    err.classList.remove('show');currentUser='Admin';isAdmin=true;showApp();
+  } else {
+    err.classList.add('show');
+    document.getElementById('admin-pw').value='';
+    document.getElementById('admin-pw').focus();
+  }
+}
+function logout(){
+  currentUser=null;isAdmin=false;selectedAdminTech=null;
+  if(realtimeSub){sb.removeChannel(realtimeSub);realtimeSub=null;}
+  if(adminRealtimeSub){sb.removeChannel(adminRealtimeSub);adminRealtimeSub=null;}
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').classList.add('show');
+  document.getElementById('admin-pw').value='';
+  document.getElementById('admin-error').classList.remove('show');
+}
+function showApp(){
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('app').style.display='block';
+  document.getElementById('greeting').textContent=isAdmin?'Tableau de bord admin':`Bonjour, ${currentUser}`;
+  document.getElementById('subgreeting').textContent=isAdmin?'Vue complète — tous les stocks':'Ton stock en temps réel';
+  document.getElementById('view-tech').style.display=isAdmin?'none':'block';
+  document.getElementById('view-admin').style.display=isAdmin?'block':'none';
+  isAdmin?loadAdminView():loadTechView();
+  isAdmin?subscribeAdminRealtime():subscribeRealtime();
+}
+
+function subscribeRealtime(){
+  if(realtimeSub) sb.removeChannel(realtimeSub);
+  realtimeSub=sb.channel('rt-'+currentUser)
+    .on('postgres_changes',{event:'*',schema:'public',table:'stock',filter:`tech_name=eq.${currentUser}`},()=>loadTechView())
+    .on('postgres_changes',{event:'*',schema:'public',table:'movements',filter:`tech_name=eq.${currentUser}`},()=>loadTechHistory(techHistPage))
+    .subscribe(s=>{document.getElementById('rt-dot').style.background=s==='SUBSCRIBED'?'#639922':'#E24B4A';});
+}
+function subscribeAdminRealtime(){
+  if(adminRealtimeSub) sb.removeChannel(adminRealtimeSub);
+  adminRealtimeSub=sb.channel('rt-admin')
+    .on('postgres_changes',{event:'*',schema:'public',table:'stock'},()=>loadAdminOverview())
+    .on('postgres_changes',{event:'*',schema:'public',table:'movements'},()=>{
+      if(document.getElementById('admin-history').classList.contains('active')) loadAdminHistory(adminHistPage);
+      if(document.getElementById('admin-expedition').classList.contains('active')) loadExpHistory();
+    })
+    .subscribe(s=>{document.getElementById('rt-dot').style.background=s==='SUBSCRIBED'?'#639922':'#E24B4A';});
+}
+
+// ---- TECH VIEW ----
+async function loadTechView(){
+  const {data,error}=await sb.from('stock').select('*').eq('tech_name',currentUser);
+  if(error){toast('Erreur chargement stock');return;}
+  const stock=data||[];
+  const low=stock.filter(s=>s.qty<=3).length;
+  document.getElementById('t-refs').textContent=stock.length;
+  document.getElementById('t-total').textContent=stock.reduce((a,s)=>a+s.qty,0);
+  document.getElementById('t-low').textContent=low;
+  if(!stock.length){
+    document.getElementById('tech-stock-list').innerHTML='<div class="empty">Aucun article — ton responsable va t\'en attribuer prochainement.</div>';
+  } else {
+    // Liste mobile-friendly au lieu d'un tableau
+    document.getElementById('tech-stock-list').innerHTML=`<div class="stock-list">${stock.map(s=>{
+      const art=ARTICLES.find(a=>a.code===s.article_code);
+      const label=art?art.label:s.article_code;
+      const cls=s.qty<=3?'b-low':'b-ok';
+      const barW=Math.min(100,Math.round(s.qty/20*100));
+      const barC=s.qty<=3?'#BA7517':'#1D9E75';
+      return `<div class="stock-item">
+        <div class="stock-item-label">
+          ${label}
+          <div class="stock-code">${s.article_code}</div>
+        </div>
+        <div class="stock-item-right">
+          <div class="bar" style="width:50px;"><div class="bar-fill" style="width:${barW}%;background:${barC};"></div></div>
+          <span class="badge ${cls}">${s.qty}</span>
+          <button class="btn-edit" onclick="openEditStock('${s.article_code}','${label.replace(/'/g,"\\'")}',${s.qty},'${currentUser}')">Corriger</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  loadTechHistory(techHistPage);
+}
+
+async function loadTechHistory(page){
+  techHistPage=page||1;
+  const {data,count}=await sb.from('movements').select('*',{count:'exact'})
+    .eq('tech_name',currentUser).order('created_at',{ascending:false})
+    .range((techHistPage-1)*PAGE_SIZE,techHistPage*PAGE_SIZE-1);
+  const el=document.getElementById('tech-history');
+  el.innerHTML=(data&&data.length)?data.map(m=>histRow(m,false)).join(''):'<div class="empty">Aucun mouvement</div>';
+  renderPagination('tech-hist-pagination',techHistPage,count||0,p=>loadTechHistory(p));
+}
+
+// ---- MOUVEMENT ----
+function openMoveModal(type){
+  moveType=type||'use';
+  document.getElementById('move-modal-title').textContent=moveType==='use'?'J\'ai utilisé du matériel':'J\'ai reçu du matériel';
+  document.getElementById('m-article-search').value='';
+  document.getElementById('m-article-code').value='';
+  document.getElementById('m-qty').value=1;
+  document.getElementById('m-note').value='';
+  document.getElementById('btn-save-move').disabled=false;
+  document.getElementById('move-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('m-article-search').focus(),300);
+}
+async function saveMove(){
+  const btn=document.getElementById('btn-save-move');
+  if(btn.disabled) return;
+  const code=document.getElementById('m-article-code').value;
+  const qty=parseInt(document.getElementById('m-qty').value)||0;
+  const note=document.getElementById('m-note').value;
+  if(!code){toast('Sélectionne un article');return;}
+  if(qty<=0){toast('Quantité invalide');return;}
+  btn.disabled=true;
+  try{
+    await applyDelta(currentUser,code,moveType==='use'?-qty:qty);
+    await sb.from('movements').insert({tech_name:currentUser,article_code:code,qty,type:moveType,note});
+    closeModal('move-modal');
+    vibrate();
+    toast(moveType==='use'?`−${qty} enregistré ✓`:`+${qty} enregistré ✓`);
+    loadTechView();
+  }catch(e){toast('Erreur — réessaie');btn.disabled=false;}
+}
+
+// ---- CORRECTION ----
+function openEditStock(code,label,currentQty,techName){
+  editCtx={code,techName};
+  document.getElementById('edit-info').textContent=`${label} — quantité actuelle : ${currentQty}`;
+  document.getElementById('es-qty').value=currentQty;
+  document.getElementById('es-note').value='';
+  document.getElementById('btn-save-correction').disabled=false;
+  document.getElementById('edit-modal').style.display='flex';
+}
+async function saveCorrection(){
+  const btn=document.getElementById('btn-save-correction');
+  if(btn.disabled) return;
+  const newQty=parseInt(document.getElementById('es-qty').value);
+  const note=document.getElementById('es-note').value||'Correction manuelle';
+  if(isNaN(newQty)||newQty<0){toast('Quantité invalide');return;}
+  const {code,techName}=editCtx;
+  btn.disabled=true;
+  try{
+    const {data:ex}=await sb.from('stock').select('qty').eq('tech_name',techName).eq('article_code',code).single();
+    const delta=newQty-(ex?ex.qty:0);
+    if(newQty<=0){
+      await sb.from('stock').delete().eq('tech_name',techName).eq('article_code',code);
+    } else {
+      await sb.from('stock').upsert({tech_name:techName,article_code:code,qty:newQty},{onConflict:'tech_name,article_code'});
+    }
+    if(delta!==0) await sb.from('movements').insert({tech_name:techName,article_code:code,qty:Math.abs(delta),type:'correction',note,by:isAdmin?'admin':techName});
+    closeModal('edit-modal');
+    vibrate();
+    toast('Quantité corrigée ✓');
+    isAdmin?loadAdminOverview():loadTechView();
+  }catch(e){toast('Erreur — réessaie');btn.disabled=false;}
+}
+
+// ---- DELTA ----
+async function applyDelta(techName,code,delta){
+  const {data:ex}=await sb.from('stock').select('qty').eq('tech_name',techName).eq('article_code',code).single();
+  const newQty=(ex?ex.qty:0)+delta;
+  if(newQty<=0){
+    await sb.from('stock').delete().eq('tech_name',techName).eq('article_code',code);
+  } else {
+    await sb.from('stock').upsert({tech_name:techName,article_code:code,qty:newQty},{onConflict:'tech_name,article_code'});
+  }
+}
+
+// ---- VIBRATION ----
+function vibrate(){
+  if(navigator.vibrate) navigator.vibrate(50);
+}
+
+// ---- EXPEDITION ----
+function addExpItem(){
+  const list=document.getElementById('exp-items-list');
+  const div=document.createElement('div');
+  div.className='exped-item-row';
+  div.innerHTML=`
+    <select><option value="">Sélectionner...</option>${ARTICLES.map(a=>`<option value="${a.code}">${a.label}</option>`).join('')}</select>
+    <input type="number" value="1" min="1">
+    <button class="btn-rm" onclick="this.closest('.exped-item-row').remove()">×</button>`;
+  list.appendChild(div);
+}
+async function saveExpedition(){
+  const btn=document.getElementById('btn-exp-save');
+  if(btn.disabled) return;
+  const tech=document.getElementById('exp-tech').value;
+  const date=document.getElementById('exp-date').value;
+  if(!tech||!date){toast('Technicien et date requis');return;}
+  const rows=document.querySelectorAll('#exp-items-list .exped-item-row');
+  const items=[];
+  rows.forEach(r=>{
+    const code=r.querySelector('select').value;
+    const qty=parseInt(r.querySelector('input').value)||0;
+    if(code&&qty>0) items.push({code,qty,label:ARTICLES.find(a=>a.code===code)?.label||code});
+  });
+  if(!items.length){toast('Ajoute au moins un article');return;}
+  btn.disabled=true;
+  try{
+    for(const item of items){
+      await applyDelta(tech,item.code,item.qty);
+      await sb.from('movements').insert({
+        tech_name:tech,article_code:item.code,qty:item.qty,type:'admin_in',
+        note:`Expédition du ${date}${document.getElementById('exp-note').value?' — '+document.getElementById('exp-note').value:''}`,by:'admin'
+      });
+    }
+    toast(`Expédition enregistrée pour ${tech} ✓`);
+    document.getElementById('exp-tech').value='';
+    document.getElementById('exp-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('exp-carrier').value='';
+    document.getElementById('exp-tracking').value='';
+    document.getElementById('exp-note').value='';
+    document.getElementById('exp-items-list').innerHTML='';
+    addExpItem();
+    loadExpHistory();
+  }catch(e){toast('Erreur — réessaie');}
+  btn.disabled=false;
+}
+async function loadExpHistory(){
+  const {data}=await sb.from('movements').select('*').eq('type','admin_in').order('created_at',{ascending:false}).limit(30);
+  const el=document.getElementById('exp-history');
+  if(!data||!data.length){el.innerHTML='<div class="empty">Aucune expédition</div>';return;}
+  el.innerHTML=`<table class="tbl">
+    <thead><tr><th>Date</th><th>Technicien</th><th>Article</th><th>Qté</th><th>Note</th></tr></thead>
+    <tbody>${data.map(m=>{
+      const art=ARTICLES.find(a=>a.code===m.article_code);
+      const date=new Date(m.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+      return `<tr><td>${date}</td><td>${m.tech_name}</td><td>${art?art.label:m.article_code}</td>
+        <td><span class="badge b-ok">+${m.qty}</span></td>
+        <td style="font-size:12px;color:var(--muted);">${m.note||''}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ---- AJOUT RAPIDE ----
+async function saveQuickAdd(){
+  const btn=document.getElementById('btn-qa-save');
+  if(btn.disabled) return;
+  const tech=document.getElementById('qa-tech').value;
+  const code=document.getElementById('qa-article-code').value;
+  const qty=parseInt(document.getElementById('qa-qty').value)||0;
+  const note=document.getElementById('qa-note').value||'Ajout rapide';
+  if(!tech){toast('Sélectionne un technicien');return;}
+  if(!code){toast('Sélectionne un article');return;}
+  if(qty<=0){toast('Quantité invalide');return;}
+  btn.disabled=true;
+  try{
+    await applyDelta(tech,code,qty);
+    await sb.from('movements').insert({tech_name:tech,article_code:code,qty,type:'admin_in',note,by:'admin'});
+    toast(`+${qty} ajouté pour ${tech} ✓`);
+    document.getElementById('qa-tech').value='';
+    document.getElementById('qa-article-search').value='';
+    document.getElementById('qa-article-code').value='';
+    document.getElementById('qa-qty').value=1;
+    document.getElementById('qa-note').value='';
+    loadAdminOverview();
+  }catch(e){toast('Erreur — réessaie');}
+  btn.disabled=false;
+}
+
+// ---- ADMIN OVERVIEW ----
+async function loadAdminView(){
+  populateAdminSelects();
+  populateArticleFilter();
+  loadAdminOverview();
+  document.getElementById('exp-date').value=new Date().toISOString().slice(0,10);
+  addExpItem();
+}
+function populateArticleFilter(){
+  document.getElementById('filter-article').innerHTML=
+    '<option value="">Tous les articles</option>'+
+    ARTICLES.map(a=>`<option value="${a.code}">${a.label}</option>`).join('');
+}
+function populateAdminSelects(){
+  const opts=TECHS.map(t=>`<option value="${t}">${t}</option>`).join('');
+  document.getElementById('exp-tech').innerHTML='<option value="">Sélectionner...</option>'+opts;
+  document.getElementById('qa-tech').innerHTML='<option value="">Sélectionner...</option>'+opts;
+  document.getElementById('ah-tech').innerHTML='<option value="">Tous les techniciens</option>'+opts;
+}
+
+function onArticleFilterChange(){
+  const code=document.getElementById('filter-article').value;
+  if(code){
+    document.getElementById('overview-grid-view').style.display='none';
+    document.getElementById('overview-article-view').style.display='block';
+    loadArticleFilterView(code);
+  } else {
+    document.getElementById('overview-grid-view').style.display='block';
+    document.getElementById('overview-article-view').style.display='none';
+    loadAdminOverview();
+  }
+}
+
+async function loadArticleFilterView(code){
+  const art=ARTICLES.find(a=>a.code===code);
+  document.getElementById('article-filter-title').textContent=`Stock "${art?art.label:code}" par technicien`;
+  const {data}=await sb.from('stock').select('*').eq('article_code',code);
+  const stock=data||[];
+  const body=document.getElementById('article-filter-body');
+  body.innerHTML=TECHS.map(tech=>{
+    const s=stock.find(s=>s.tech_name===tech);
+    const qty=s?s.qty:0;
+    const cls=qty<=0?'b-gray':qty<=3?'b-low':'b-ok';
+    const status=qty<=0?'Aucun stock':qty<=3?'Stock bas':'OK';
+    return `<tr>
+      <td style="font-weight:500;">${tech}</td>
+      <td><span class="badge ${cls}">${qty}</span></td>
+      <td style="font-size:12px;color:var(--muted);">${status}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadAdminOverview(){
+  const {data}=await sb.from('stock').select('*');
+  const stock=data||[];
+  document.getElementById('admin-tech-grid').innerHTML=TECHS.map(tech=>{
+    const ts=stock.filter(s=>s.tech_name===tech);
+    const total=ts.reduce((a,s)=>a+s.qty,0);
+    const low=ts.filter(s=>s.qty<=3).length;
+    const sel=selectedAdminTech===tech?'sel':'';
+    return `<div class="tech-ov ${sel}" onclick="selectAdminTech('${tech}')">
+      <div class="tech-ov-name">${tech}</div>
+      <div class="tech-ov-stats">
+        <span class="mini b-ok">${total} articles</span>
+        <span class="mini b-gray">${ts.length} réf.</span>
+        ${low>0?`<span class="mini b-low">${low} stock bas</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  if(selectedAdminTech) renderAdminDetail(stock);
+}
+function selectAdminTech(t){selectedAdminTech=selectedAdminTech===t?null:t;loadAdminOverview();}
+function renderAdminDetail(stock){
+  if(!selectedAdminTech){document.getElementById('admin-tech-detail').innerHTML='';return;}
+  const ts=stock.filter(s=>s.tech_name===selectedAdminTech);
+  if(!ts.length){
+    document.getElementById('admin-tech-detail').innerHTML=`<div class="card"><div class="empty">Aucun stock pour ${selectedAdminTech}</div></div>`;
+    return;
+  }
+  document.getElementById('admin-tech-detail').innerHTML=`
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="card-header"><span>Stock de ${selectedAdminTech}</span></div>
+      <div class="stock-list">${ts.map(s=>{
+        const art=ARTICLES.find(a=>a.code===s.article_code);
+        const label=art?art.label:s.article_code;
+        const cls=s.qty<=3?'b-low':'b-ok';
+        return `<div class="stock-item">
+          <div class="stock-item-label">${label}<div class="stock-code">${s.article_code}</div></div>
+          <div class="stock-item-right">
+            <span class="badge ${cls}">${s.qty}</span>
+            <button class="btn-edit" onclick="openEditStock('${s.article_code}','${label.replace(/'/g,"\\'")}',${s.qty},'${selectedAdminTech}')">Corriger</button>
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+}
+
+function aTab(t){
+  ['overview','expedition','quickadd','history','settings','security'].forEach((n,i)=>{
+    document.querySelectorAll('#view-admin .tab')[i].classList.toggle('active',n===t);
+    document.getElementById('admin-'+n).classList.toggle('active',n===t);
+  });
+  if(t==='history') loadAdminHistory(1);
+  if(t==='overview') loadAdminOverview();
+  if(t==='settings') renderTechManage();
+  if(t==='expedition') loadExpHistory();
+}
+
+async function loadAdminHistory(page){
+  adminHistPage=page||1;
+  const techF=document.getElementById('ah-tech').value;
+  const typeF=document.getElementById('ah-type').value;
+  let q=sb.from('movements').select('*',{count:'exact'}).order('created_at',{ascending:false})
+    .range((adminHistPage-1)*PAGE_SIZE,adminHistPage*PAGE_SIZE-1);
+  if(techF) q=q.eq('tech_name',techF);
+  if(typeF) q=q.eq('type',typeF);
+  const {data,count}=await q;
+  const el=document.getElementById('admin-hist-list');
+  el.innerHTML=(data&&data.length)?data.map(m=>histRow(m,true)).join(''):'<div class="empty">Aucun mouvement</div>';
+  renderPagination('admin-hist-pagination',adminHistPage,count||0,p=>loadAdminHistory(p));
+}
+
+function renderPagination(elId,currentPage,total,onPage){
+  const el=document.getElementById(elId);
+  const totalPages=Math.ceil(total/PAGE_SIZE);
+  if(totalPages<=1){el.innerHTML='';return;}
+  el.innerHTML=`<div class="pagination">
+    <span>${total} entrées · page ${currentPage}/${totalPages}</span>
+    <div class="pagination-btns">
+      <button class="btn btn-sm" ${currentPage<=1?'disabled':''} onclick="(${onPage.toString()})(${currentPage-1})">←</button>
+      <button class="btn btn-sm" ${currentPage>=totalPages?'disabled':''} onclick="(${onPage.toString()})(${currentPage+1})">→</button>
+    </div>
+  </div>`;
+}
+
+function histRow(m,showTech){
+  const art=ARTICLES.find(a=>a.code===m.article_code);
+  const isIn=m.type==='receive'||m.type==='admin_in'||m.type==='correction';
+  const sign=isIn?'+':'-';
+  const labels={use:'Utilisé',receive:'Reçu',admin_in:'Expédition',correction:'Correction'};
+  const tagCls=m.type==='admin_in'||m.type==='correction'?'tag-admin':isIn?'tag-in':'tag-out';
+  const date=new Date(m.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const artLabel=art?art.label:m.article_code;
+  const techSpan=showTech?`<strong>${m.tech_name}</strong> — `:'';
+  const sl=artLabel.replace(/'/g,"\\'");
+  return `<div class="hist-row">
+    <div class="hdot ${isIn?'hdot-in':'hdot-out'}"></div>
+    <div class="hcontent">
+      <div class="htitle">${techSpan}${artLabel} <span style="color:${isIn?'var(--green)':'var(--red)'};">${sign}${m.qty}</span></div>
+      <div class="hmeta"><span class="tag ${tagCls}">${labels[m.type]||m.type}</span> · ${date}${m.note?' · '+m.note:''}</div>
+    </div>
+    <div style="flex-shrink:0;">
+      <button class="btn btn-sm btn-danger" onclick="askDeleteMove(${m.id},${m.qty},'${m.type}','${m.tech_name}','${m.article_code}','${sl}')">Supprimer</button>
+    </div>
+  </div>`;
+}
+
+function askDeleteMove(id,qty,type,techName,articleCode,label){
+  const isIn=type==='receive'||type==='admin_in';
+  document.getElementById('confirm-text').textContent=`Supprimer "${label} ${isIn?'+':'−'}${qty}" pour ${techName} ? Le stock sera recalculé.`;
+  pendingDeleteFn=async()=>{
+    if(type!=='correction'){
+      await applyDelta(techName,articleCode,(type==='receive'||type==='admin_in')?-qty:qty);
+    }
+    await sb.from('movements').delete().eq('id',id);
+    closeModal('confirm-modal');
+    toast('Mouvement supprimé');
+    isAdmin?(loadAdminHistory(adminHistPage),loadAdminOverview()):(loadTechHistory(techHistPage),loadTechView());
+  };
+  document.getElementById('confirm-modal').style.display='flex';
+}
+function doDelete(){if(pendingDeleteFn){pendingDeleteFn();pendingDeleteFn=null;}}
+function closeModal(id){document.getElementById(id).style.display='none';}
+
+function renderTechManage(){
+  const el=document.getElementById('tech-manage-list');
+  el.innerHTML=TECHS.length?TECHS.map(t=>`
+    <div class="tech-item"><span>${t}</span>
+      <button class="btn btn-sm btn-danger" onclick="askDeleteTech('${t}')">Supprimer</button>
+    </div>`).join(''):'<div class="empty">Aucun technicien</div>';
+}
+async function addTech(name){
+  name=(name||'').trim();
+  if(!name||!/^[a-zA-ZÀ-ÿ\s\-]+$/.test(name)){toast('Prénom invalide');return;}
+  if(TECHS.includes(name)){toast('Ce technicien existe déjà');return;}
+  const {error}=await sb.from('technicians').insert({name});
+  if(error){toast('Erreur : '+error.message);return;}
+  TECHS.push(name);TECHS.sort();
+  document.getElementById('new-tech-name').value='';
+  toast(`${name} ajouté ✓`);
+  renderTechManage();renderLoginButtons();populateAdminSelects();
+}
+function askDeleteTech(name){
+  document.getElementById('del-tech-text').textContent=`Supprimer "${name}" de la liste ? Son historique et stock sont conservés.`;
+  pendingDeleteTechName=name;
+  document.getElementById('del-tech-modal').style.display='flex';
+}
+async function doDeleteTech(){
+  const name=pendingDeleteTechName;
+  await sb.from('technicians').delete().eq('name',name);
+  TECHS=TECHS.filter(t=>t!==name);
+  closeModal('del-tech-modal');
+  toast(`${name} supprimé`);
+  renderTechManage();renderLoginButtons();populateAdminSelects();
+  if(selectedAdminTech===name){selectedAdminTech=null;loadAdminOverview();}
+}
+
+async function changePassword(){
+  const current=document.getElementById('pw-current').value;
+  const newPw=document.getElementById('pw-new').value;
+  const confirm=document.getElementById('pw-confirm').value;
+  const errEl=document.getElementById('pw-error');
+  errEl.classList.remove('show');
+  if(current!==ADMIN_PASSWORD){errEl.textContent='Mot de passe actuel incorrect';errEl.classList.add('show');return;}
+  if(!newPw||newPw.length<6){errEl.textContent='6 caractères minimum';errEl.classList.add('show');return;}
+  if(newPw!==confirm){errEl.textContent='Les mots de passe ne correspondent pas';errEl.classList.add('show');return;}
+  const {error}=await sb.from('config').update({value:newPw}).eq('key','admin_password');
+  if(error){toast('Erreur mise à jour');return;}
+  ADMIN_PASSWORD=newPw;
+  document.getElementById('pw-current').value='';
+  document.getElementById('pw-new').value='';
+  document.getElementById('pw-confirm').value='';
+  toast('Mot de passe mis à jour ✓');
+}
+
+async function exportExcel(){
+  const {data}=await sb.from('movements').select('*').order('created_at',{ascending:false});
+  if(!data||!data.length){toast('Aucune donnée');return;}
+  const labels={use:'Utilisé',receive:'Reçu',admin_in:'Expédition',correction:'Correction'};
+  const mouvRows=data.map(m=>{
+    const art=ARTICLES.find(a=>a.code===m.article_code);
+    return {'Date':new Date(m.created_at).toLocaleDateString('fr-FR'),'Heure':new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),'Technicien':m.tech_name,'Article':art?art.label:m.article_code,'Code':m.article_code,'Quantité':m.qty,'Type':labels[m.type]||m.type,'Note':m.note||''};
+  });
+  const {data:stockData}=await sb.from('stock').select('*').order('tech_name');
+  const stockRows=(stockData||[]).map(s=>{
+    const art=ARTICLES.find(a=>a.code===s.article_code);
+    return {'Technicien':s.tech_name,'Article':art?art.label:s.article_code,'Code':s.article_code,'Quantité':s.qty,'Alerte':s.qty<=3?'Stock bas':''};
+  });
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.json_to_sheet(mouvRows);
+  const ws2=XLSX.utils.json_to_sheet(stockRows);
+  ws1['!cols']=[{wch:12},{wch:8},{wch:14},{wch:36},{wch:20},{wch:10},{wch:14},{wch:24}];
+  ws2['!cols']=[{wch:14},{wch:36},{wch:20},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Mouvements');
+  XLSX.utils.book_append_sheet(wb,ws2,'Stock actuel');
+  XLSX.writeFile(wb,'stock_techniciens_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Export Excel téléchargé ✓');
+}
+
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+init();
+</script>
+</body>
+</html>
