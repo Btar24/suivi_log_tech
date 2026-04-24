@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { getTechnicians } from './services/technicianService'
 import { getAdminPassword } from './services/configService'
 import LoginScreen from './views/LoginScreen'
@@ -44,13 +45,18 @@ function clearAuth() {
   }
 }
 
-export default function App() {
+function ProtectedRoute({ children, isAuthenticated }) {
+  return isAuthenticated ? children : <Navigate to="/" replace />
+}
+
+function AppContent() {
   const [appState, setAppState] = useState('splash')
   const [currentUser, setCurrentUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [techs, setTechs] = useState([])
   const [adminPassword, setAdminPassword] = useState(null)
   const [networkOnline, setNetworkOnline] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const goOffline = () => setNetworkOnline(false)
@@ -74,34 +80,36 @@ export default function App() {
       if (savedAuth?.currentUser) {
         setCurrentUser(savedAuth.currentUser)
         setIsAdmin(Boolean(savedAuth.isAdmin))
-        setAppState('app')
-      } else {
-        setAppState('login')
+        // Navigate to appropriate route based on user type
+        navigate(savedAuth.isAdmin ? '/admin' : '/tech', { replace: true })
       }
+      setAppState('ready')
     }
     init()
-  }, [])
+  }, [navigate])
 
   function handleLoginTech(name) {
     setCurrentUser(name)
     setIsAdmin(false)
     saveAuth(name, false)
-    setAppState('app')
+    navigate('/tech')
   }
 
   function handleLoginAdmin() {
     setCurrentUser('Admin')
     setIsAdmin(true)
     saveAuth('Admin', true)
-    setAppState('app')
+    navigate('/admin')
   }
 
   function handleLogout() {
     setCurrentUser(null)
     setIsAdmin(false)
     clearAuth()
-    setAppState('login')
+    navigate('/', { replace: true })
   }
+
+  const isAuthenticated = Boolean(currentUser)
 
   return (
     <>
@@ -113,28 +121,67 @@ export default function App() {
 
       {appState === 'splash' && <Splash />}
 
-      {appState === 'login' && (
-        <LoginScreen
-          techs={techs}
-          setTechs={setTechs}
-          adminPassword={adminPassword}
-          onLoginTech={handleLoginTech}
-          onLoginAdmin={handleLoginAdmin}
-        />
-      )}
-
-      {appState === 'app' && (
-        <AppShell
-          currentUser={currentUser}
-          isAdmin={isAdmin}
-          techs={techs}
-          setTechs={setTechs}
-          adminPassword={adminPassword}
-          onLogout={handleLogout}
-        />
+      {appState === 'ready' && (
+        <Routes>
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? (
+                <Navigate to={isAdmin ? '/admin' : '/tech'} replace />
+              ) : (
+                <LoginScreen
+                  techs={techs}
+                  setTechs={setTechs}
+                  adminPassword={adminPassword}
+                  onLoginTech={handleLoginTech}
+                  onLoginAdmin={handleLoginAdmin}
+                />
+              )
+            }
+          />
+          <Route
+            path="/tech"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated && !isAdmin}>
+                <AppShell
+                  currentUser={currentUser}
+                  isAdmin={false}
+                  techs={techs}
+                  setTechs={setTechs}
+                  adminPassword={adminPassword}
+                  onLogout={handleLogout}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated && isAdmin}>
+                <AppShell
+                  currentUser={currentUser}
+                  isAdmin={true}
+                  techs={techs}
+                  setTechs={setTechs}
+                  adminPassword={adminPassword}
+                  onLogout={handleLogout}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       )}
 
       <Toast />
     </>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   )
 }
