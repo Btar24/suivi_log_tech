@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { getTechnicians } from './services/technicianService'
 import { getAdminPassword } from './services/configService'
+import { syncPendingOfflineActions } from './services/offlineService'
+import { toast } from './store/toastStore'
 import LoginScreen from './views/LoginScreen'
 import AppShell from './views/AppShell'
 import Toast from './components/ui/Toast'
@@ -109,6 +111,17 @@ function AppContent() {
     window.addEventListener('online', goOnline)
     return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline) }
   }, [])
+
+  useEffect(() => {
+    if (!networkOnline) return
+    syncPendingOfflineActions().then((count) => {
+      if (count > 0) {
+        toast(`Synchronisation ${count} action(s) hors ligne effectuée(s)`)
+      }
+    }).catch((e) => {
+      console.error('Erreur sync offline', e)
+    })
+  }, [networkOnline])
 
   // Gestion PWA
   useEffect(() => {
