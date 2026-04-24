@@ -17,6 +17,44 @@ function Splash() {
   )
 }
 
+function InstallBanner({ onDismiss, onInstall }) {
+  const [isVisible, setIsVisible] = useState(true)
+
+  if (!isVisible) return null
+
+  return (
+    <div id="install-banner" className="show">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 18 }}>📱</span>
+        <div>
+          <div style={{ fontWeight: 500, fontSize: 14 }}>Installer Stock Techniciens</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>App native sur votre téléphone</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          className="btn btn-sm"
+          onClick={() => {
+            onInstall()
+            setIsVisible(false)
+          }}
+        >
+          Installer
+        </button>
+        <button
+          className="btn btn-sm btn-secondary"
+          onClick={() => {
+            onDismiss()
+            setIsVisible(false)
+          }}
+        >
+          Plus tard
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const STORAGE_KEY = 'suivi-stock-auth'
 
 function loadSavedAuth() {
@@ -56,7 +94,64 @@ function AppContent() {
   const [techs, setTechs] = useState([])
   const [adminPassword, setAdminPassword] = useState(null)
   const [networkOnline, setNetworkOnline] = useState(true)
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showInstallBanner, setShowInstallBanner] = useState(false)
   const navigate = useNavigate()
+
+  // Détection mobile
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+
+  useEffect(() => {
+    const goOffline = () => setNetworkOnline(false)
+    const goOnline = () => setNetworkOnline(true)
+    window.addEventListener('offline', goOffline)
+    window.addEventListener('online', goOnline)
+    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline) }
+  }, [])
+
+  // Gestion PWA
+  useEffect(() => {
+    // Écouter l'événement beforeinstallprompt
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+      // Afficher le bandeau seulement sur mobile et si pas déjà installé
+      if (isMobile && !isStandalone) {
+        setShowInstallBanner(true)
+      }
+    }
+
+    // Écouter l'événement appinstalled
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null)
+      setShowInstallBanner(false)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+    }
+  }, [isMobile, isStandalone])
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null)
+      }
+    }
+  }
+
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false)
+    // Sauvegarder dans localStorage pour ne plus afficher
+    localStorage.setItem('install-banner-dismissed', 'true')
+  }
 
   useEffect(() => {
     const goOffline = () => setNetworkOnline(false)
@@ -115,8 +210,12 @@ function AppContent() {
     <>
       {!networkOnline && (
         <div id="network-banner" className="show">
-          Connexion perdue — vérifie ton réseau
+          🚫 Hors ligne — Données non à jour
         </div>
+      )}
+
+      {showInstallBanner && (
+        <InstallBanner onDismiss={handleDismissInstall} onInstall={handleInstall} />
       )}
 
       {appState === 'splash' && <Splash />}
@@ -150,6 +249,7 @@ function AppContent() {
                   setTechs={setTechs}
                   adminPassword={adminPassword}
                   onLogout={handleLogout}
+                  networkOnline={networkOnline}
                 />
               </ProtectedRoute>
             }
@@ -165,6 +265,7 @@ function AppContent() {
                   setTechs={setTechs}
                   adminPassword={adminPassword}
                   onLogout={handleLogout}
+                  networkOnline={networkOnline}
                 />
               </ProtectedRoute>
             }

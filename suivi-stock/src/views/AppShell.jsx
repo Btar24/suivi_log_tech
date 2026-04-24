@@ -1,7 +1,7 @@
 import TechView from '../components/tech/TechView'
 import AdminView from '../components/admin/AdminView'
 
-export default function AppShell({ currentUser, isAdmin, techs, setTechs, adminPassword, onLogout }) {
+export default function AppShell({ currentUser, isAdmin, techs, setTechs, adminPassword, onLogout, networkOnline }) {
   return (
     <div id="app">
       <div className="topbar">
@@ -10,7 +10,17 @@ export default function AppShell({ currentUser, isAdmin, techs, setTechs, adminP
           <div className="tsub">{isAdmin ? 'Vue complète — tous les stocks' : 'Ton stock en temps réel'}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span id="rt-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#639922', display: 'inline-block' }} />
+          <span
+            id="rt-dot"
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: networkOnline ? '#639922' : '#dc2626',
+              display: 'inline-block'
+            }}
+            title={networkOnline ? 'Connecté' : 'Hors ligne'}
+          />
           <button className="btn btn-sm" onClick={onLogout}>Changer</button>
         </div>
       </div>
