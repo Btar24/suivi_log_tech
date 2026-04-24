@@ -63,6 +63,7 @@ L'application est déployée sur Netlify avec configuration automatique :
 - **Build command** : `npm run build`
 - **Publish directory** : `dist`
 - **Déploiement automatique** : À chaque push sur la branche `main`
+- **Configuration PWA** : `.npmrc` avec `legacy-peer-deps=true` pour compatibilité Vite 8
 
 ## PWA - Détails techniques
 
