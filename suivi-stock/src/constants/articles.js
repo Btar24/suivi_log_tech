@@ -1,0 +1,26 @@
+export const ARTICLES = [
+  { code: '1117-4P', label: '1117-4P' },
+  { code: 'ANTENNE-COAXIALE', label: 'Antenne coaxiale Huber Suhner' },
+  { code: 'CISCO-1101-4P', label: 'Cisco 1101-4P' },
+  { code: 'CISCO-C1111-8P', label: 'Cisco C1111 - 8P' },
+  { code: 'EBDS-ADAPT-NF-SMAF', label: 'Adaptateur N-femelle → SMA-femelle' },
+  { code: 'EBDS-ADAPT-NF-SMAM', label: 'Adaptateur N-femelle → SMA-mâle' },
+  { code: 'EBDS-ADAPT-NM-NM', label: 'Adaptateur N-mâle → N-mâle' },
+  { code: 'EBDS-CBL240-100M', label: 'Câble bobine type 240 – 100m' },
+  { code: 'EBDS-CBL400-100M', label: 'Câble bobine type 400 – 100m' },
+  { code: 'EBDS-CON240-N-M', label: 'Connecteur N-mâle crimp câble 240' },
+  { code: 'EBDS-CON240-SMAM', label: 'Connecteur SMA-mâle crimp câble 240' },
+  { code: 'EBDS-CON400-N-F', label: 'Connecteur N-femelle crimp câble 400' },
+  { code: 'EBDS-CON400-N-M', label: 'Connecteur N-mâle crimp câble 400' },
+  { code: 'KEENETIC-SPEEDSTER', label: 'Keenetic Speedster' },
+  { code: 'RJ45-BLEU-GE1-1M', label: 'RJ45 Bleu CAT6 GE1 – 1m' },
+  { code: 'RJ45-BLUE-G1-1M', label: 'RJ45 Bleu CAT6 G1 – 1m' },
+  { code: 'RJ45-BLUE-G1-3M', label: 'RJ45 Bleu CAT6 G1 – 3m' },
+  { code: 'RJ45-BLUE-G2-1M', label: 'RJ45 Bleu CAT6 G2 – 1m' },
+  { code: 'RJ45-BLUE-G2-3M', label: 'RJ45 Bleu CAT6 G2 – 3m' },
+  { code: 'RJ45-GRIS-G0-3M', label: 'RJ45 Gris CAT6 G0 – 3m' },
+  { code: 'RJ45-GRIS-G1-3M', label: 'RJ45 Gris CAT6 G1 – 3m' },
+  { code: 'RJ45-JAUNE-GE0-1M', label: 'RJ45 Jaune CAT6 GE0 – 1m' },
+]
+
+export const PAGE_SIZE = 20
