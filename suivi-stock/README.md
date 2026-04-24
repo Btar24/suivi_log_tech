@@ -2,13 +2,34 @@
 
 Application React pour la gestion de stock des techniciens avec interface admin et technicien.
 
-## Fonctionnalités
+## ✨ Fonctionnalités
 
 - **Authentification persistante** : Connexion sauvegardée dans le navigateur
 - **Navigation par URL** : Routes distinctes pour chaque vue
 - **Interface technicien** : Gestion du stock personnel en temps réel
 - **Interface admin** : Vue complète de tous les stocks et gestion des techniciens
 - **Synchronisation temps réel** : Mises à jour automatiques via Supabase
+- **🔥 PWA (Progressive Web App)** : Installation sur mobile, fonctionnement hors ligne
+
+## 📱 PWA - Application Mobile
+
+L'application peut être installée sur les appareils mobiles comme une vraie application native :
+
+### Installation
+- **Sur mobile** : Un bandeau "Installer Stock Techniciens" apparaît automatiquement
+- **Sur desktop** : Bouton d'installation dans la barre d'adresse du navigateur
+- **Nom** : "Stock Techniciens" sur l'écran d'accueil
+
+### Fonctionnement hors ligne
+- **Cache automatique** : L'app fonctionne même sans connexion internet
+- **Indicateur visuel** : Point rouge en haut à droite quand hors ligne
+- **Message clair** : "Hors ligne — Données non à jour" en bandeau rouge
+
+### Avantages PWA
+- **Performance** : Chargement instantané après installation
+- **Fiabilité** : Fonctionne hors ligne
+- **Engagement** : Apparait comme une vraie app sur l'écran d'accueil
+- **Mises à jour** : Se met à jour automatiquement
 
 ## Routes
 
@@ -18,11 +39,12 @@ Application React pour la gestion de stock des techniciens avec interface admin 
 
 ## Technologies
 
-- React 19
-- Vite
-- React Router DOM
-- Supabase (base de données)
+- React 19 + Vite
+- React Router DOM (navigation)
+- Supabase (base de données temps réel)
 - Zustand (gestion d'état)
+- Vite PWA (Progressive Web App)
+- Workbox (service worker)
 
 ## Scripts
 
@@ -36,4 +58,16 @@ npm run lint         # Vérification du code avec ESLint
 
 ## Déploiement
 
-L'application est configurée pour Netlify avec le fichier `netlify.toml` à la racine du projet.
+L'application est déployée sur Netlify avec configuration automatique :
+- **URL** : https://stock-crf-suivi.netlify.app
+- **Build command** : `npm run build`
+- **Publish directory** : `dist`
+- **Déploiement automatique** : À chaque push sur la branche `main`
+
+## PWA - Détails techniques
+
+- **Service Worker** : Cache automatique des ressources statiques
+- **Manifest** : Configuration pour l'installation et l'apparence
+- **Mode standalone** : S'ouvre comme une app native
+- **Orientation portrait** : Optimisée pour les téléphones
+- **Thème** : Blanc avec icône bleue personnalisée
